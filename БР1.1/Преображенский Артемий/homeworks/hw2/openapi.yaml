@@ -102,6 +102,45 @@ components:
         - url
         - sort_order
 
+    CreateRestaurantPhotoRequest:
+      type: object
+      properties:
+        url:
+          type: string
+        sort_order:
+          type: integer
+      required:
+        - url
+        - sort_order
+
+    CreateRestaurantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        city:
+          type: string
+        address:
+          type: string
+        cuisine_type:
+          type: string
+        price_category:
+          type: string
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateRestaurantPhotoRequest'
+      required:
+        - name
+        - description
+        - city
+        - address
+        - cuisine_type
+        - price_category
+        - photos
+
     RestaurantShort:
       type: object
       properties:
@@ -333,6 +372,18 @@ components:
         - created_at
         - updated_at
 
+    TableShort:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        table_number:
+          type: integer
+      required:
+        - id
+        - table_number
+
 paths:
   /auth/register:
     post:
@@ -455,6 +506,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RestaurantListResponse'
+
+    post:
+      tags:
+        - Restaurants
+      summary: Создать ресторан
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRestaurantRequest'
+      responses:
+        '201':
+          description: Ресторан создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestaurantDetail'
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /restaurants/{id}:
     get:
@@ -627,7 +710,65 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /bookings/my:
+  /bookings/availability:
+    get:
+      tags:
+        - Bookings
+      summary: Получение свободных столиков
+      parameters:
+        - name: restaurant_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: booking_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: start_time
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "18:00"
+        - name: end_time
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "20:00"
+        - name: guests_count
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Свободные столики
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TableShort'
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Ресторан не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /bookings/:
     get:
       tags:
         - Bookings
