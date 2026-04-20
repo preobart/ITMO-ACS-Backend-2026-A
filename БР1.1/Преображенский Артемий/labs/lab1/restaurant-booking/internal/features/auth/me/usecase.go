@@ -3,14 +3,20 @@ package me
 import (
 	"context"
 
-	"restaurant-booking/internal/shared/userrepo"
+	"github.com/google/uuid"
+
+	"restaurant-booking/internal/domain"
 )
 
-type Usecase struct {
-	repo *userrepo.Repo
+type Repository interface {
+	GetByID(ctx context.Context, id uuid.UUID) (domain.User, error)
 }
 
-func NewUsecase(repo *userrepo.Repo) *Usecase {
+type Usecase struct {
+	repo Repository
+}
+
+func NewUsecase(repo Repository) *Usecase {
 	return &Usecase{repo: repo}
 }
 

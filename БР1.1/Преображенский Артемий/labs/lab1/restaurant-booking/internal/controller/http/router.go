@@ -14,10 +14,10 @@ import (
 type AuthRoutes struct {
 	Register http.HandlerFunc
 	Login    http.HandlerFunc
+	Profile  http.HandlerFunc
 }
 
 type MeRoutes struct {
-	Profile       http.HandlerFunc
 	BookingList   http.HandlerFunc
 	BookingGet    http.HandlerFunc
 	BookingCancel http.HandlerFunc
@@ -30,6 +30,9 @@ type RestaurantRoutes struct {
 	Menu         http.HandlerFunc
 	ReviewsList  http.HandlerFunc
 	ReviewCreate http.HandlerFunc
+	ReviewGet    http.HandlerFunc
+	ReviewUpdate http.HandlerFunc
+	ReviewDelete http.HandlerFunc
 	Tables       http.HandlerFunc
 	Availability http.HandlerFunc
 }
@@ -39,11 +42,11 @@ type BookingRoutes struct {
 }
 
 type Routes struct {
-	Auth         AuthRoutes
-	Me           MeRoutes
-	Restaurants  RestaurantRoutes
-	Bookings     BookingRoutes
-	JWT          jwt.Config
+	Auth        AuthRoutes
+	Me          MeRoutes
+	Restaurants RestaurantRoutes
+	Bookings    BookingRoutes
+	JWT         jwt.Config
 }
 
 func Router(routes Routes) http.Handler {
@@ -57,13 +60,13 @@ func Router(routes Routes) http.Handler {
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", routes.Auth.Register)
 			r.Post("/login", routes.Auth.Login)
+			r.With(auth).Get("/me", routes.Auth.Profile)
 		})
 
 		r.With(auth).Post("/bookings", routes.Bookings.Create)
 
 		r.Route("/me", func(r chi.Router) {
 			r.Use(auth)
-			r.Get("/", routes.Me.Profile)
 			r.Get("/bookings", routes.Me.BookingList)
 			r.Get("/bookings/{bookingID}", routes.Me.BookingGet)
 			r.Delete("/bookings/{bookingID}", routes.Me.BookingCancel)
@@ -77,6 +80,9 @@ func Router(routes Routes) http.Handler {
 				r.Get("/menu", routes.Restaurants.Menu)
 				r.Get("/reviews", routes.Restaurants.ReviewsList)
 				r.With(auth).Post("/reviews", routes.Restaurants.ReviewCreate)
+				r.Get("/reviews/{reviewID}", routes.Restaurants.ReviewGet)
+				r.With(auth).Put("/reviews/{reviewID}", routes.Restaurants.ReviewUpdate)
+				r.With(auth).Delete("/reviews/{reviewID}", routes.Restaurants.ReviewDelete)
 				r.Get("/tables", routes.Restaurants.Tables)
 				r.Get("/tables/{tableID}/availability", routes.Restaurants.Availability)
 			})

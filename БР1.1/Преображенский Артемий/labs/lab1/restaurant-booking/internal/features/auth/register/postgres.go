@@ -1,4 +1,4 @@
-package userrepo
+package register
 
 import (
 	"context"
@@ -12,15 +12,15 @@ import (
 	"restaurant-booking/internal/domain"
 )
 
-type Repo struct {
+type postgresRepository struct {
 	pool *postgres.Pool
 }
 
-func New(pool *postgres.Pool) *Repo {
-	return &Repo{pool: pool}
+func NewPostgres(pool *postgres.Pool) *postgresRepository {
+	return &postgresRepository{pool: pool}
 }
 
-func (r *Repo) Create(ctx context.Context, email domain.Email, passwordHash string, fullName string, phone domain.Phone) (uuid.UUID, error) {
+func (r *postgresRepository) Create(ctx context.Context, email domain.Email, passwordHash string, fullName string, phone domain.Phone) (uuid.UUID, error) {
 	var id uuid.UUID
 	var phoneArg interface{}
 	if phone != "" {
@@ -37,31 +37,7 @@ func (r *Repo) Create(ctx context.Context, email domain.Email, passwordHash stri
 	return id, nil
 }
 
-func (r *Repo) GetByEmail(ctx context.Context, email domain.Email) (domain.User, error) {
-	var u domain.User
-	var phone *string
-	err := r.pool.Pgx().QueryRow(ctx, `
-		SELECT id, email, password_hash, full_name, phone, created_at, updated_at
-		FROM users WHERE email = $1
-	`, string(email)).Scan(
-		&u.ID,
-		&u.Email,
-		&u.Password,
-		&u.Name,
-		&phone,
-		&u.CreatedAt,
-		&u.UpdatedAt,
-	)
-	if err != nil {
-		return domain.User{}, mapErr(err)
-	}
-	if phone != nil {
-		u.Phone = domain.Phone(*phone)
-	}
-	return u, nil
-}
-
-func (r *Repo) GetByID(ctx context.Context, id uuid.UUID) (domain.User, error) {
+func (r *postgresRepository) GetByID(ctx context.Context, id uuid.UUID) (domain.User, error) {
 	var u domain.User
 	var phone *string
 	err := r.pool.Pgx().QueryRow(ctx, `

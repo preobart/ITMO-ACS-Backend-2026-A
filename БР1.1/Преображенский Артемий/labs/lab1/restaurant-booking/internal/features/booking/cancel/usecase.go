@@ -6,14 +6,17 @@ import (
 	"github.com/google/uuid"
 
 	"restaurant-booking/internal/domain"
-	"restaurant-booking/internal/shared/bookingrepo"
 )
 
-type Usecase struct {
-	repo *bookingrepo.Repo
+type Repository interface {
+	Cancel(ctx context.Context, userID uuid.UUID, bookingID uuid.UUID) error
 }
 
-func NewUsecase(repo *bookingrepo.Repo) *Usecase {
+type Usecase struct {
+	repo Repository
+}
+
+func NewUsecase(repo Repository) *Usecase {
 	return &Usecase{repo: repo}
 }
 

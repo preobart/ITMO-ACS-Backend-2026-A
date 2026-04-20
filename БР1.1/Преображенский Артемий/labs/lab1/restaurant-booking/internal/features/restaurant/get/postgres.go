@@ -2,9 +2,11 @@ package get
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"restaurant-booking/internal/adapter/postgres"
 	"restaurant-booking/internal/domain"
@@ -51,6 +53,9 @@ LIMIT 1
 		&photos,
 	)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Restaurant{}, domain.ErrNotFound
+		}
 		return domain.Restaurant{}, err
 	}
 

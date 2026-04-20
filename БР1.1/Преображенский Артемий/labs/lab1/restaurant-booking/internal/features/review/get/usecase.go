@@ -1,4 +1,4 @@
-package list
+package get
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 )
 
 type Repository interface {
-	ListByRestaurant(ctx context.Context, restaurantID uuid.UUID) ([]domain.Table, error)
+	GetByRestaurantAndID(ctx context.Context, restaurantID uuid.UUID, reviewID uuid.UUID) (Item, error)
 }
 
 type Usecase struct {
@@ -20,14 +20,18 @@ func NewUsecase(repo Repository) *Usecase {
 	return &Usecase{repo: repo}
 }
 
-func (u *Usecase) List(ctx context.Context, input Input) (Output, error) {
+func (u *Usecase) Get(ctx context.Context, input Input) (Output, error) {
 	rid, err := uuid.Parse(input.RestaurantID)
 	if err != nil {
 		return Output{}, domain.ErrInvalidInput
 	}
-	items, err := u.repo.ListByRestaurant(ctx, rid)
+	reviewID, err := uuid.Parse(input.ReviewID)
+	if err != nil {
+		return Output{}, domain.ErrInvalidInput
+	}
+	it, err := u.repo.GetByRestaurantAndID(ctx, rid, reviewID)
 	if err != nil {
 		return Output{}, err
 	}
-	return Output{Items: items}, nil
+	return Output{Item: it}, nil
 }

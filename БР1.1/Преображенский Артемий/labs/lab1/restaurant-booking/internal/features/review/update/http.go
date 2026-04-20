@@ -1,4 +1,4 @@
-package create
+package update
 
 import (
 	"encoding/json"
@@ -23,18 +23,18 @@ func HTTP(usecase *Usecase) http.HandlerFunc {
 			render.WriteDomainError(w, domain.ErrInvalidInput)
 			return
 		}
-		in := Input{
+		out, err := usecase.Update(r.Context(), Input{
 			UserID:       uid,
 			RestaurantID: chi.URLParam(r, "id"),
+			ReviewID:     chi.URLParam(r, "reviewID"),
 			Rating:       body.Rating,
 			Text:         body.Text,
-		}
-		out, err := usecase.Create(r.Context(), in)
+		})
 		if err != nil {
 			render.WriteDomainError(w, err)
 			return
 		}
-		if err := render.Write(w, http.StatusCreated, out); err != nil {
+		if err := render.Write(w, http.StatusOK, out); err != nil {
 			render.WriteError(w, http.StatusInternalServerError)
 		}
 	}

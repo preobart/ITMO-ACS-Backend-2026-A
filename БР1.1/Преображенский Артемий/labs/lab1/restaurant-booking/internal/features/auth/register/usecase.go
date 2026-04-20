@@ -4,19 +4,24 @@ import (
 	"context"
 	"strings"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"restaurant-booking/internal/domain"
-	"restaurant-booking/internal/shared/userrepo"
 	"restaurant-booking/pkg/jwt"
 )
 
+type Repository interface {
+	Create(ctx context.Context, email domain.Email, passwordHash string, fullName string, phone domain.Phone) (uuid.UUID, error)
+	GetByID(ctx context.Context, id uuid.UUID) (domain.User, error)
+}
+
 type Usecase struct {
-	repo   *userrepo.Repo
+	repo   Repository
 	jwtCfg jwt.Config
 }
 
-func NewUsecase(repo *userrepo.Repo, jwtCfg jwt.Config) *Usecase {
+func NewUsecase(repo Repository, jwtCfg jwt.Config) *Usecase {
 	return &Usecase{repo: repo, jwtCfg: jwtCfg}
 }
 

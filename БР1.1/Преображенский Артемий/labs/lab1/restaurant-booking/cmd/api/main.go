@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"net/http"
 	"os"
@@ -9,28 +10,35 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	httpSwagger "github.com/swaggo/http-swagger"
+
 	"restaurant-booking/config"
 	"restaurant-booking/internal/adapter/postgres"
 	httpcontroller "restaurant-booking/internal/controller/http"
 	"restaurant-booking/internal/features/auth/login"
+	"restaurant-booking/internal/features/auth/me"
 	"restaurant-booking/internal/features/auth/register"
+	bookingavailability "restaurant-booking/internal/features/booking/availability"
 	bookingcancel "restaurant-booking/internal/features/booking/cancel"
 	bookingcreate "restaurant-booking/internal/features/booking/create"
 	bookingget "restaurant-booking/internal/features/booking/get"
 	bookinglist "restaurant-booking/internal/features/booking/list"
-	bookingavailability "restaurant-booking/internal/features/booking/availability"
 	menulist "restaurant-booking/internal/features/menu/list"
-	reviewcreate "restaurant-booking/internal/features/review/create"
-	reviewlist "restaurant-booking/internal/features/review/list"
 	restaurantdelete "restaurant-booking/internal/features/restaurant/delete"
 	restaurantget "restaurant-booking/internal/features/restaurant/get"
 	restaurantlist "restaurant-booking/internal/features/restaurant/list"
+	reviewcreate "restaurant-booking/internal/features/review/create"
+	reviewdelete "restaurant-booking/internal/features/review/delete"
+	reviewget "restaurant-booking/internal/features/review/get"
+	reviewlist "restaurant-booking/internal/features/review/list"
+	reviewupdate "restaurant-booking/internal/features/review/update"
 	tablelist "restaurant-booking/internal/features/table/list"
-	userme "restaurant-booking/internal/features/user/me"
-	"restaurant-booking/internal/shared/bookingrepo"
-	"restaurant-booking/internal/shared/userrepo"
 	"restaurant-booking/pkg/jwt"
 )
+
+//go:embed swagger.json
+var swaggerJSON []byte
 
 func main() {
 	cfg, err := config.LoadConfig()
@@ -58,8 +66,15 @@ func AppRun(ctx context.Context, cfg config.Config) error {
 		Expires: jwtDur,
 	}
 
-	userRepo := userrepo.New(pgPool)
-	bookingRepo := bookingrepo.New(pgPool)
+	registerRepo := register.NewPostgres(pgPool)
+	loginRepo := login.NewPostgres(pgPool)
+	meRepo := me.NewPostgres(pgPool)
+
+	bookingCreateRepo := bookingcreate.NewPostgres(pgPool)
+	bookingListRepo := bookinglist.NewPostgres(pgPool)
+	bookingGetRepo := bookingget.NewPostgres(pgPool)
+	bookingCancelRepo := bookingcancel.NewPostgres(pgPool)
+	bookingAvailabilityRepo := bookingavailability.NewPostgres(pgPool)
 
 	restaurantListRepo := restaurantlist.NewPostgres(pgPool)
 	restaurantListUsecase := restaurantlist.NewUsecase(restaurantListRepo)
@@ -79,27 +94,36 @@ func AppRun(ctx context.Context, cfg config.Config) error {
 	reviewCreateRepo := reviewcreate.NewPostgres(pgPool)
 	reviewCreateUsecase := reviewcreate.NewUsecase(reviewCreateRepo)
 
+	reviewGetRepo := reviewget.NewPostgres(pgPool)
+	reviewGetUsecase := reviewget.NewUsecase(reviewGetRepo)
+
+	reviewUpdateRepo := reviewupdate.NewPostgres(pgPool)
+	reviewUpdateUsecase := reviewupdate.NewUsecase(reviewUpdateRepo)
+
+	reviewDeleteRepo := reviewdelete.NewPostgres(pgPool)
+	reviewDeleteUsecase := reviewdelete.NewUsecase(reviewDeleteRepo)
+
 	tableListRepo := tablelist.NewPostgres(pgPool)
 	tableListUsecase := tablelist.NewUsecase(tableListRepo)
 
-	bookingAvailabilityUsecase := bookingavailability.NewUsecase(bookingRepo)
-	bookingCreateUsecase := bookingcreate.NewUsecase(bookingRepo)
-	bookingListUsecase := bookinglist.NewUsecase(bookingRepo)
-	bookingGetUsecase := bookingget.NewUsecase(bookingRepo)
-	bookingCancelUsecase := bookingcancel.NewUsecase(bookingRepo)
+	bookingAvailabilityUsecase := bookingavailability.NewUsecase(bookingAvailabilityRepo)
+	bookingCreateUsecase := bookingcreate.NewUsecase(bookingCreateRepo)
+	bookingListUsecase := bookinglist.NewUsecase(bookingListRepo)
+	bookingGetUsecase := bookingget.NewUsecase(bookingGetRepo)
+	bookingCancelUsecase := bookingcancel.NewUsecase(bookingCancelRepo)
 
-	registerUsecase := register.NewUsecase(userRepo, jwtCfg)
-	loginUsecase := login.NewUsecase(userRepo, jwtCfg)
-	meUsecase := userme.NewUsecase(userRepo)
+	registerUsecase := register.NewUsecase(registerRepo, jwtCfg)
+	loginUsecase := login.NewUsecase(loginRepo, jwtCfg)
+	meUsecase := me.NewUsecase(meRepo)
 
 	routes := httpcontroller.Routes{
 		JWT: jwtCfg,
 		Auth: httpcontroller.AuthRoutes{
 			Register: register.HTTP(registerUsecase),
 			Login:    login.HTTP(loginUsecase),
+			Profile:  me.HTTP(meUsecase),
 		},
 		Me: httpcontroller.MeRoutes{
-			Profile:       userme.HTTP(meUsecase),
 			BookingList:   bookinglist.HTTP(bookingListUsecase),
 			BookingGet:    bookingget.HTTP(bookingGetUsecase),
 			BookingCancel: bookingcancel.HTTP(bookingCancelUsecase),
@@ -111,6 +135,9 @@ func AppRun(ctx context.Context, cfg config.Config) error {
 			Menu:         menulist.HTTP(menuListUsecase),
 			ReviewsList:  reviewlist.HTTP(reviewListUsecase),
 			ReviewCreate: reviewcreate.HTTP(reviewCreateUsecase),
+			ReviewGet:    reviewget.HTTP(reviewGetUsecase),
+			ReviewUpdate: reviewupdate.HTTP(reviewUpdateUsecase),
+			ReviewDelete: reviewdelete.HTTP(reviewDeleteUsecase),
 			Tables:       tablelist.HTTP(tableListUsecase),
 			Availability: bookingavailability.HTTP(bookingAvailabilityUsecase),
 		},
@@ -119,11 +146,21 @@ func AppRun(ctx context.Context, cfg config.Config) error {
 		},
 	}
 
-	router := httpcontroller.Router(routes)
+	apiRouter := httpcontroller.Router(routes)
+
+	root := chi.NewRouter()
+	root.Get("/swagger/doc.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(swaggerJSON)
+	})
+	root.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
+	root.Mount("/", apiRouter)
 
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           router,
+		Handler:           root,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

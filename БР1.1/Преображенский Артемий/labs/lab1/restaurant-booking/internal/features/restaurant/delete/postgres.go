@@ -2,10 +2,12 @@ package delete
 
 import (
 	"context"
+	"errors"
 	"restaurant-booking/internal/adapter/postgres"
 	"restaurant-booking/internal/domain"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type postgresRepository struct {
@@ -23,6 +25,9 @@ func (r *postgresRepository) Delete(ctx context.Context, id uuid.UUID) (domain.R
 	var restaurantID uuid.UUID
 	err := r.pool.Pgx().QueryRow(ctx, query, id).Scan(&restaurantID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Restaurant{}, domain.ErrNotFound
+		}
 		return domain.Restaurant{}, err
 	}
 	return domain.Restaurant{ID: restaurantID}, nil

@@ -8,16 +8,19 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"restaurant-booking/internal/domain"
-	"restaurant-booking/internal/shared/userrepo"
 	"restaurant-booking/pkg/jwt"
 )
 
+type Repository interface {
+	FindForLogin(ctx context.Context, email domain.Email) (domain.User, error)
+}
+
 type Usecase struct {
-	repo   *userrepo.Repo
+	repo   Repository
 	jwtCfg jwt.Config
 }
 
-func NewUsecase(repo *userrepo.Repo, jwtCfg jwt.Config) *Usecase {
+func NewUsecase(repo Repository, jwtCfg jwt.Config) *Usecase {
 	return &Usecase{repo: repo, jwtCfg: jwtCfg}
 }
 
@@ -26,7 +29,7 @@ func (u *Usecase) Login(ctx context.Context, input Input) (Output, error) {
 	if email == "" || input.Password == "" {
 		return Output{}, domain.ErrInvalidInput
 	}
-	user, err := u.repo.GetByEmail(ctx, domain.Email(email))
+	user, err := u.repo.FindForLogin(ctx, domain.Email(email))
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			return Output{}, domain.ErrUnauthorized
@@ -36,10 +39,8 @@ func (u *Usecase) Login(ctx context.Context, input Input) (Output, error) {
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
 		return Output{}, domain.ErrUnauthorized
 	}
-	profile, err := u.repo.GetByID(ctx, user.ID)
-	if err != nil {
-		return Output{}, err
-	}
+	profile := user
+	profile.Password = ""
 	token, err := jwt.Sign(u.jwtCfg, user.ID)
 	if err != nil {
 		return Output{}, err

@@ -1,12 +1,10 @@
-package create
+package delete
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	"restaurant-booking/internal/domain"
 	"restaurant-booking/pkg/middleware"
 	"restaurant-booking/pkg/render"
 )
@@ -18,24 +16,15 @@ func HTTP(usecase *Usecase) http.HandlerFunc {
 			render.WriteError(w, http.StatusUnauthorized)
 			return
 		}
-		var body Body
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			render.WriteDomainError(w, domain.ErrInvalidInput)
-			return
-		}
-		in := Input{
+		err := usecase.Delete(r.Context(), Input{
 			UserID:       uid,
 			RestaurantID: chi.URLParam(r, "id"),
-			Rating:       body.Rating,
-			Text:         body.Text,
-		}
-		out, err := usecase.Create(r.Context(), in)
+			ReviewID:     chi.URLParam(r, "reviewID"),
+		})
 		if err != nil {
 			render.WriteDomainError(w, err)
 			return
 		}
-		if err := render.Write(w, http.StatusCreated, out); err != nil {
-			render.WriteError(w, http.StatusInternalServerError)
-		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
