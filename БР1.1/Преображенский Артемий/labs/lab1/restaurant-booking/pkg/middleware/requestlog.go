@@ -36,4 +36,3 @@ func RequestLog(next http.Handler) http.Handler {
 		logger.L.Printf("%s %s %d %d %s", r.Method, r.URL.Path, lw.status, lw.size, d.String())
 	})
 }
-
