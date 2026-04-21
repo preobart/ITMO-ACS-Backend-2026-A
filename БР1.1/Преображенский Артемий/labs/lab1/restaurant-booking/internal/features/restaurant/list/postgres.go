@@ -29,11 +29,11 @@ SELECT
 	r.cuisine_type::text,
 	r.price_category::text,
 	r.created_at,
-	COALESCE(r.photos, ARRAY[]::text[])
+	ARRAY[]::text[]
 FROM restaurants r
 WHERE ($1 = '' OR r.city = $1)
-  AND ($2 = '' OR r.cuisine_type = $2::cuisine_type)
-  AND ($3 = '' OR r.price_category = $3::price_category)
+  AND ($2 = '' OR r.cuisine_type::text = $2)
+  AND ($3 = '' OR r.price_category::text = $3)
 ORDER BY r.created_at DESC
 `, string(input.City), string(input.CuisineType), string(input.PriceCategory))
 	if err != nil {

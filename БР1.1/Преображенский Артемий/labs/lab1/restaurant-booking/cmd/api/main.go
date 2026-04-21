@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 	"net/http"
 	"os"
@@ -14,6 +13,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 
 	"restaurant-booking/config"
+	"restaurant-booking/docs"
 	"restaurant-booking/internal/adapter/postgres"
 	httpcontroller "restaurant-booking/internal/controller/http"
 	"restaurant-booking/internal/features/auth/login"
@@ -36,9 +36,6 @@ import (
 	tablelist "restaurant-booking/internal/features/table/list"
 	"restaurant-booking/pkg/jwt"
 )
-
-//go:embed swagger.json
-var swaggerJSON []byte
 
 func main() {
 	cfg, err := config.LoadConfig()
@@ -149,12 +146,12 @@ func AppRun(ctx context.Context, cfg config.Config) error {
 	apiRouter := httpcontroller.Router(routes)
 
 	root := chi.NewRouter()
-	root.Get("/swagger/doc.json", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(swaggerJSON)
+	root.Get("/swagger/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/yaml")
+		w.Write(docs.OpenAPISpec)
 	})
 	root.Get("/swagger/*", httpSwagger.Handler(
-		httpSwagger.URL("/swagger/doc.json"),
+		httpSwagger.URL("/swagger/openapi.yaml"),
 	))
 	root.Mount("/", apiRouter)
 

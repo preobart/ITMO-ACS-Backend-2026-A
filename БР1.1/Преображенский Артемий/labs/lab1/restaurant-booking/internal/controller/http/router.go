@@ -51,6 +51,7 @@ type Routes struct {
 
 func Router(routes Routes) http.Handler {
 	r := chi.NewRouter()
+	r.Use(appmiddleware.RequestLog)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.Timeout(60 * time.Second))
 

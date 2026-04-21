@@ -2,12 +2,14 @@ package render
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"restaurant-booking/internal/domain"
 )
 
 func WriteDomainError(w http.ResponseWriter, err error) {
+	log.Println(err)
 	switch {
 	case errors.Is(err, domain.ErrNotFound):
 		WriteError(w, http.StatusNotFound)
